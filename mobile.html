@@ -401,16 +401,6 @@
     <input type="file" id="romInput" accept=".gba,.bin,.zip">
 
     <script>
-        window.EJS_player = "#game";
-        window.EJS_core = "gba";
-        window.EJS_gameUrl = "";
-        window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
-        window.EJS_startOnLoaded = false;
-        window.EJS_language = "zh-CN";
-    </script>
-    <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
-
-    <script>
         // 防止页面滚动和缩放
         document.addEventListener('gesturestart', e => e.preventDefault());
         document.addEventListener('gesturechange', e => e.preventDefault());
@@ -424,6 +414,7 @@
         }, { passive: false });
 
         const $ = id => document.getElementById(id);
+        const gameDiv = $('game');
 
         // 菜单
         $('menuBtn').addEventListener('click', () => $('menuModal').classList.add('active'));
@@ -438,6 +429,61 @@
                 document.exitFullscreen?.();
             }
         });
+
+        // ROM 文件选择
+        $('romInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const romData = new Uint8Array(event.target.result);
+                startEmulator(romData, file.name);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function startEmulator(romData, fileName) {
+            // 清空游戏区域
+            gameDiv.innerHTML = '';
+
+            // 创建 Blob URL 用于 ROM
+            const romBlob = new Blob([romData], { type: 'application/octet-stream' });
+            const romUrl = URL.createObjectURL(romBlob);
+
+            // 构建 iframe HTML 内容
+            const iframeContent = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>body{margin:0;background:#000;overflow:hidden;}</style>
+</head>
+<body>
+<div id="game" style="width:100%;height:100vh;"></div>
+<script>
+window.EJS_player = "#game";
+window.EJS_core = "gba";
+window.EJS_gameUrl = "${romUrl}";
+window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+window.EJS_startOnLoaded = true;
+window.EJS_language = "zh-CN";
+window.EJS_gameName = "${fileName.replace(/\.[^/.]+$/, '')}";
+<\/script>
+<script src="https://cdn.emulatorjs.org/stable/data/loader.js"><\/script>
+</body>
+</html>`;
+
+            // 创建 Blob URL 用于 iframe 内容（避免 srcdoc 的跨域限制）
+            const iframeBlob = new Blob([iframeContent], { type: 'text/html' });
+            const iframeUrl = URL.createObjectURL(iframeBlob);
+
+            // 创建 iframe
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'width:100%;height:100%;border:none;display:block;';
+            iframe.src = iframeUrl;
+            gameDiv.appendChild(iframe);
+        }
     </script>
 </body>
 </html>

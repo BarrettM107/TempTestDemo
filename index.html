@@ -14,23 +14,25 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            padding: 10px;
         }
         h1 {
             color: #f1c40f;
-            margin: 15px 0 5px;
+            margin: 10px 0 5px;
             font-size: 1.4rem;
         }
-        p.sub { color: #888; font-size: 0.8rem; margin-bottom: 15px; }
+        p.sub { color: #888; font-size: 0.8rem; margin-bottom: 10px; }
         #game {
             width: 640px;
             height: 480px;
             max-width: 95vw;
-            max-height: 70vh;
+            max-height: 60vh;
             background: #000;
             border-radius: 8px;
+            position: relative;
         }
         .info {
-            margin: 15px;
+            margin: 10px;
             color: #666;
             font-size: 0.75rem;
             text-align: center;
@@ -46,27 +48,93 @@
             color: #ccc;
             margin: 0 2px;
         }
+        .btn {
+            padding: 10px 24px;
+            background: linear-gradient(145deg, #9b59b6, #8e44ad);
+            border: none;
+            border-radius: 20px;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        input[type="file"] { display: none; }
     </style>
 </head>
 <body>
     <h1>GBA 模拟器</h1>
-    <p class="sub">基于 mGBA WebAssembly 核心</p>
+    <p class="sub">基于 mGBA WebAssembly 核心 | 支持 .gba 文件</p>
+
+    <div>
+        <input type="file" id="romInput" accept=".gba,.bin,.zip">
+        <button class="btn" onclick="document.getElementById('romInput').click()">选择 ROM 文件</button>
+    </div>
 
     <div id="game"></div>
 
     <div class="info">
-        <p>点击上方 <strong>开始游戏</strong> 按钮，选择 .gba ROM 文件即可游玩</p>
+        <p>选择 .gba ROM 文件后，模拟器会自动启动</p>
         <p>键盘：<kbd>方向键</kbd> 移动 <kbd>Z</kbd> A <kbd>X</kbd> B <kbd>Enter</kbd> Start <kbd>Shift</kbd> Select</p>
     </div>
 
     <script>
-        window.EJS_player = "#game";
-        window.EJS_core = "gba";
-        window.EJS_gameUrl = "";
-        window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
-        window.EJS_startOnLoaded = false;
-        window.EJS_language = "zh-CN";
+        const romInput = document.getElementById('romInput');
+        const gameDiv = document.getElementById('game');
+
+        romInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const romData = new Uint8Array(event.target.result);
+                startEmulator(romData, file.name);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        function startEmulator(romData, fileName) {
+            // 清空游戏区域
+            gameDiv.innerHTML = '';
+
+            // 创建 Blob URL 用于 ROM
+            const romBlob = new Blob([romData], { type: 'application/octet-stream' });
+            const romUrl = URL.createObjectURL(romBlob);
+
+            // 构建 iframe HTML 内容
+            const iframeContent = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>body{margin:0;background:#000;overflow:hidden;}</style>
+</head>
+<body>
+<div id="game" style="width:100%;height:100vh;"></div>
+<script>
+window.EJS_player = "#game";
+window.EJS_core = "gba";
+window.EJS_gameUrl = "${romUrl}";
+window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+window.EJS_startOnLoaded = true;
+window.EJS_language = "zh-CN";
+window.EJS_gameName = "${fileName.replace(/\.[^/.]+$/, '')}";
+<\/script>
+<script src="https://cdn.emulatorjs.org/stable/data/loader.js"><\/script>
+</body>
+</html>`;
+
+            // 创建 Blob URL 用于 iframe 内容（避免 srcdoc 的跨域限制）
+            const iframeBlob = new Blob([iframeContent], { type: 'text/html' });
+            const iframeUrl = URL.createObjectURL(iframeBlob);
+
+            // 创建 iframe
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'width:100%;height:100%;border:none;display:block;';
+            iframe.src = iframeUrl;
+            gameDiv.appendChild(iframe);
+        }
     </script>
-    <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
 </body>
 </html>
