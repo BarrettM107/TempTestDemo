@@ -11,7 +11,11 @@ if (!scriptPath.endsWith("/")) {
     scriptPath += "/";
 }
 if (!scriptPath.startsWith("/") && !isAbsoluteUrl(scriptPath)) {
-    scriptPath = "../" + scriptPath;
+    // Use absolute path based on current script location to avoid path resolution issues
+    scriptPath = new URL(scriptPath, document.currentScript.src).href;
+    if (!scriptPath.endsWith("/")) {
+        scriptPath += "/";
+    }
 }
 
 const debug = window.EJS_DEBUG_XX === true;
