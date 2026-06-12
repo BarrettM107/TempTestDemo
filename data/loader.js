@@ -32,9 +32,23 @@ function resolvePath(path) {
 
 async function loadScript(file) {
     try {
-        const script = resolvePath(file);
-        const module = await import(script);
-        return module.default;
+        const scriptPath = resolvePath(file);
+        return new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = scriptPath;
+            s.onload = () => {
+                if (file === "emulator.min.js" || file === "emulator.js") {
+                    resolve(window.EmulatorJS);
+                } else {
+                    resolve(null);
+                }
+            };
+            s.onerror = (e) => {
+                if (debug) console.error('Failed to load script:', scriptPath, e);
+                filesMissing(file).then(mod => resolve(mod));
+            };
+            document.head.appendChild(s);
+        });
     } catch(e) {
         if (debug) console.error(e);
         const module = await filesMissing(file);
