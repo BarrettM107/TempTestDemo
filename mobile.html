@@ -589,13 +589,8 @@
             }
         });
 
-        // ===== CDN 备用列表 =====
-        var CDN_LIST = [
-            { name: 'official', data: 'https://cdn.emulatorjs.org/stable/data/', loader: 'https://cdn.emulatorjs.org/stable/data/loader.js' },
-            { name: 'jsdelivr', data: 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/', loader: 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/loader.js' },
-            { name: 'fastly', data: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/', loader: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/loader.js' },
-            { name: 'gcore', data: 'https://gcore.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/', loader: 'https://gcore.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/loader.js' }
-        ];
+        // ===== 本地 EmulatorJS 数据路径 =====
+        var LOCAL_DATA_PATH = 'data/';
 
         // ===== ROM 文件选择 =====
         function handleRomSelect(file) {
@@ -623,55 +618,34 @@
                 window.EJS_language = 'en-US';
                 window.EJS_gameName = file.name.replace(/\.[^/.]+$/, '');
                 window.EJS_threads = false; // 关键！避免 SharedArrayBuffer 问题
+                window.EJS_pathtodata = LOCAL_DATA_PATH;
 
-                debugLog('EJS config set. startOnLoaded=false, threads=false');
+                debugLog('EJS config set. Using LOCAL data path');
 
-                // 尝试加载 CDN
-                var cdnIndex = 0;
-                function tryLoadCDN() {
-                    if (cdnIndex >= CDN_LIST.length) {
-                        debugLog('All CDN sources failed!', 'error');
-                        startScreen.innerHTML = '<div class="loading-overlay"><div style="color:#e94560;">所有 CDN 加载失败</div><div style="font-size:0.75rem;color:#888;">请检查网络后刷新重试</div><div style="font-size:0.65rem;color:#666;margin-top:8px;">点击右上角 BUG 查看日志</div></div>';
-                        return;
-                    }
-                    var cdn = CDN_LIST[cdnIndex];
-                    debugLog('Trying CDN [' + cdn.name + ']: ' + cdn.loader);
-                    window.EJS_pathtodata = cdn.data;
+                // 加载本地 loader.js
+                var script = document.createElement('script');
+                script.src = LOCAL_DATA_PATH + 'loader.js';
+                script.onload = function() {
+                    debugLog('Local loader.js loaded OK!', 'info');
+                    script.loaded = true;
+                    startScreen.style.display = 'none';
 
-                    var script = document.createElement('script');
-                    script.src = cdn.loader;
-                    script.onload = function() {
-                        debugLog('CDN [' + cdn.name + '] loader loaded OK!', 'info');
-                        script.loaded = true;
-                        // 不隐藏 startScreen，让 EmulatorJS 的 Start 按钮显示
-                        startScreen.style.display = 'none';
-
-                        // 监听游戏启动后的状态
-                        setTimeout(function() {
-                            checkGameStatus();
-                        }, 3000);
-                        setTimeout(function() {
-                            checkGameStatus();
-                        }, 10000);
-                        setTimeout(function() {
-                            checkGameStatus();
-                        }, 20000);
-                    };
-                    script.onerror = function() {
-                        debugLog('CDN [' + cdn.name + '] failed, trying next...', 'warn');
-                        cdnIndex++;
-                        tryLoadCDN();
-                    };
-                    // 超时处理
+                    // 监听游戏启动后的状态
                     setTimeout(function() {
-                        if (!script.loaded) {
-                            debugLog('CDN [' + cdn.name + '] timeout (15s)', 'warn');
-                            script.onerror();
-                        }
-                    }, 15000);
-                    document.head.appendChild(script);
-                }
-                tryLoadCDN();
+                        checkGameStatus();
+                    }, 3000);
+                    setTimeout(function() {
+                        checkGameStatus();
+                    }, 10000);
+                    setTimeout(function() {
+                        checkGameStatus();
+                    }, 20000);
+                };
+                script.onerror = function() {
+                    debugLog('Local loader.js failed!', 'error');
+                    startScreen.innerHTML = '<div class="loading-overlay"><div style="color:#e94560;">本地核心加载失败</div><div style="font-size:0.75rem;color:#888;">请刷新页面重试</div></div>';
+                };
+                document.head.appendChild(script);
             };
             reader.onerror = function() {
                 debugLog('FileReader error!', 'error');
