@@ -550,19 +550,24 @@
             checkForPresetROM();
         });
 
-        // 检查是否有预置 ROM 文件
+        // 检查是否有预置 ROM 文件（Base64 编码伪装）
         function checkForPresetROM() {
-            // 尝试从 roms 目录加载默认 ROM
-            fetch('roms/game.gba')
+            // 尝试从 roms 目录加载伪装的 ROM 数据
+            fetch('roms/data.txt')
                 .then(response => {
                     if (response.ok) {
-                        return response.arrayBuffer();
+                        return response.text();
                     }
                     throw new Error('没有预置 ROM');
                 })
-                .then(buffer => {
-                    const romData = new Uint8Array(buffer);
-                    loadROM(romData, 'game.gba');
+                .then(text => {
+                    // Base64 解码
+                    const binaryStr = atob(text.trim());
+                    const romData = new Uint8Array(binaryStr.length);
+                    for (let i = 0; i < binaryStr.length; i++) {
+                        romData[i] = binaryStr.charCodeAt(i);
+                    }
+                    loadROM(romData, 'PokemonEmerald.gba');
                 })
                 .catch(err => {
                     console.log('没有预置 ROM，等待用户上传');
