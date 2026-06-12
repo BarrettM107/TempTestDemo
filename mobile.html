@@ -618,7 +618,7 @@
                 window.EJS_language = 'en-US';
                 window.EJS_gameName = file.name.replace(/\.[^/.]+$/, '');
                 window.EJS_threads = false; // 关键！避免 SharedArrayBuffer 问题
-                window.EJS_pathtodata = LOCAL_DATA_PATH;
+                window.EJS_pathtodata = './';
 
                 debugLog('EJS config set. Using LOCAL data path');
 

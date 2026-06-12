@@ -11,8 +11,12 @@ if (!scriptPath.endsWith("/")) {
     scriptPath += "/";
 }
 if (!scriptPath.startsWith("/") && !isAbsoluteUrl(scriptPath)) {
-    // Use absolute path based on current script location to avoid path resolution issues
-    scriptPath = new URL(scriptPath, document.currentScript.src).href;
+    // Resolve relative path against the loader.js location
+    try {
+        scriptPath = new URL(scriptPath, document.currentScript.src).href;
+    } catch(e) {
+        scriptPath = folderPath(document.currentScript.src) + scriptPath;
+    }
     if (!scriptPath.endsWith("/")) {
         scriptPath += "/";
     }
