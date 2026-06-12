@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>GBA 模拟器 - 网页版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+
+        header {
+            text-align: center;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        header h1 {
+            font-size: 1.6rem;
+            color: #f1c40f;
+            text-shadow: 0 0 10px rgba(241,196,15,0.5);
+        }
+
+        header p {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        /* 游戏区域 */
+        .game-area {
+            background: #000;
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        #game {
+            width: 100%;
+            aspect-ratio: 3/2;
+            background: #0f380f;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        #game iframe, #game canvas {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 4px;
+        }
+
+        /* 控制栏 */
+        .controls-bar {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            color: #fff;
+        }
+
+        .btn-primary {
+            background: linear-gradient(145deg, #9b59b6, #8e44ad);
+            box-shadow: 0 4px 15px rgba(155,89,182,0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            box-shadow: 0 4px 15px rgba(52,152,219,0.4);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* 虚拟按键 */
+        .virtual-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            margin-top: 15px;
+        }
+
+        .dpad {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 0 auto;
+        }
+
+        .dpad-btn {
+            position: absolute;
+            background: linear-gradient(145deg, #2c3e50, #1a252f);
+            border: 1px solid #34495e;
+            color: #7f8c8d;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            user-select: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: all 0.1s;
+        }
+
+        .dpad-btn:active, .dpad-btn.pressed {
+            background: linear-gradient(145deg, #1a252f, #2c3e50);
+            transform: scale(0.95);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+            color: #ecf0f1;
+        }
+
+        .dpad-up { top: 0; left: 50px; width: 50px; height: 45px; border-radius: 8px 8px 4px 4px; }
+        .dpad-down { bottom: 0; left: 50px; width: 50px; height: 45px; border-radius: 4px 4px 8px 8px; }
+        .dpad-left { top: 50px; left: 0; width: 45px; height: 50px; border-radius: 8px 4px 4px 8px; }
+        .dpad-right { top: 50px; right: 0; width: 45px; height: 50px; border-radius: 4px 8px 8px 4px; }
+        .dpad-center { top: 50px; left: 50px; width: 50px; height: 50px; background: #1a252f; border-radius: 4px; pointer-events: none; }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .action-row {
+            display: flex;
+            gap: 15px;
+        }
+
+        .action-btn {
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.1s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            user-select: none;
+        }
+
+        .action-btn:active, .action-btn.pressed {
+            transform: scale(0.92);
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+        }
+
+        .btn-a { background: linear-gradient(145deg, #e74c3c, #c0392b); }
+        .btn-b { background: linear-gradient(145deg, #f1c40f, #d4ac0d); color: #333; }
+        .btn-l, .btn-r { background: linear-gradient(145deg, #5d6d7e, #34495e); width: 70px; height: 35px; border-radius: 15px; font-size: 0.9rem; }
+        .btn-select, .btn-start { background: linear-gradient(145deg, #7f8c8d, #566573); width: 60px; height: 25px; border-radius: 12px; font-size: 0.7rem; transform: rotate(-15deg); }
+
+        /* 键盘帮助 */
+        .keyboard-help {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: #888;
+            text-align: center;
+        }
+
+        .keyboard-help kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #333;
+            border-radius: 4px;
+            border: 1px solid #555;
+            font-family: monospace;
+            color: #ccc;
+            margin: 0 2px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 480px) {
+            header h1 { font-size: 1.3rem; }
+            .dpad { width: 130px; height: 130px; }
+            .dpad-up, .dpad-down { left: 42px; width: 46px; height: 40px; }
+            .dpad-left, .dpad-right { top: 42px; width: 40px; height: 46px; }
+            .dpad-center { top: 42px; left: 42px; width: 46px; height: 46px; }
+            .action-btn { width: 48px; height: 48px; font-size: 1rem; }
+        }
+
+        .hidden { display: none !important; }
+
+        /* 加载提示 */
+        .loading-tip {
+            text-align: center;
+            padding: 20px;
+            color: #aaa;
+        }
+
+        .loading-tip .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #333;
+            border-top-color: #9b59b6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GBA 模拟器</h1>
+            <p>基于 mGBA WebAssembly 核心 | 支持 .gba ROM 文件</p>
+        </header>
+
+        <div class="controls-bar">
+            <input type="file" id="romInput" accept=".gba,.bin,.zip" hidden>
+            <button class="btn btn-primary" onclick="document.getElementById('romInput').click()">
+                加载 ROM 文件
+            </button>
+            <button class="btn btn-secondary" onclick="toggleFullscreen()">
+                全屏
+            </button>
+        </div>
+
+        <div class="game-area">
+            <div id="game">
+                <div class="loading-tip" id="loadingTip">
+                    <div class="spinner"></div>
+                    <p>正在加载模拟器核心...</p>
+                    <p style="font-size:0.7rem;margin-top:5px;">首次加载可能需要几秒钟</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 虚拟按键 -->
+        <div class="virtual-controls">
+            <div class="dpad">
+                <div class="dpad-btn dpad-up" data-key="UP">&#9650;</div>
+                <div class="dpad-btn dpad-down" data-key="DOWN">&#9660;</div>
+                <div class="dpad-btn dpad-left" data-key="LEFT">&#9664;</div>
+                <div class="dpad-btn dpad-right" data-key="RIGHT">&#9654;</div>
+                <div class="dpad-center"></div>
+            </div>
+
+            <div class="action-buttons">
+                <div class="action-row">
+                    <button class="action-btn btn-l" data-key="L">L</button>
+                    <button class="action-btn btn-r" data-key="R">R</button>
+                </div>
+                <div class="action-row">
+                    <button class="action-btn btn-b" data-key="B">B</button>
+                    <button class="action-btn btn-a" data-key="A">A</button>
+                </div>
+                <div class="action-row">
+                    <button class="action-btn btn-select" data-key="SELECT">SELECT</button>
+                    <button class="action-btn btn-start" data-key="START">START</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="keyboard-help">
+            <strong>键盘映射：</strong>
+            <kbd>方向键</kbd> 方向 <kbd>Z</kbd> A <kbd>X</kbd> B <kbd>A</kbd> L <kbd>S</kbd> R
+            <kbd>Enter</kbd> Start <kbd>Shift</kbd> Select
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // EmulatorJS 配置 - 必须在加载 loader.js 之前设置
+        // ============================================
+        window.EJS_player = "#game";
+        window.EJS_core = "gba";
+        window.EJS_gameUrl = "";
+        window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+        window.EJS_startOnLoaded = false;
+        window.EJS_language = "zh-CN";
+
+        // 按键映射配置
+        window.EJS_Buttons = {
+            0: { name: "A", mapping: 0 },
+            1: { name: "B", mapping: 1 },
+            2: { name: "SELECT", mapping: 2 },
+            3: { name: "START", mapping: 3 },
+            4: { name: "UP", mapping: 4 },
+            5: { name: "DOWN", mapping: 5 },
+            6: { name: "LEFT", mapping: 6 },
+            7: { name: "RIGHT", mapping: 7 },
+            8: { name: "R", mapping: 8 },
+            9: { name: "L", mapping: 9 }
+        };
+
+        // 键盘映射
+        window.EJS_keyMappings = {
+            'ArrowUp': 4,
+            'ArrowDown': 5,
+            'ArrowLeft': 6,
+            'ArrowRight': 7,
+            'KeyZ': 0,
+            'KeyX': 1,
+            'KeyA': 9,
+            'KeyS': 8,
+            'Enter': 3,
+            'ShiftLeft': 2,
+            'ShiftRight': 2
+        };
+
+        // 存储待加载的 ROM 数据
+        window.pendingROM = null;
+        window.pendingROMName = "";
+    </script>
+
+    <!-- 加载 EmulatorJS -->
+    <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+
+    <script>
+        // ============================================
+        // 自定义逻辑
+        // ============================================
+
+        const romInput = document.getElementById('romInput');
+        const loadingTip = document.getElementById('loadingTip');
+        let emulatorInitialized = false;
+
+        // ROM 文件选择处理
+        romInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            loadingTip.innerHTML = '<div class="spinner"></div><p>正在读取 ROM...</p>';
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const romData = new Uint8Array(event.target.result);
+                await loadROM(romData, file.name);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // 加载 ROM 到模拟器
+        async function loadROM(romData, fileName) {
+            try {
+                loadingTip.innerHTML = '<div class="spinner"></div><p>正在启动游戏...</p>';
+
+                // 创建 Blob URL
+                const blob = new Blob([romData], { type: 'application/octet-stream' });
+                const romUrl = URL.createObjectURL(blob);
+
+                // 保存 ROM 信息到全局
+                window.pendingROM = romData;
+                window.pendingROMName = fileName.replace(/\.[^/.]+$/, "");
+
+                if (emulatorInitialized) {
+                    // 模拟器已初始化，通过重新加载页面或调用内部方法
+                    // EmulatorJS 不支持动态切换 ROM，需要重新初始化
+                    restartEmulatorWithROM(romUrl, fileName);
+                } else {
+                    // 首次加载，设置配置并启动
+                    window.EJS_gameUrl = romUrl;
+                    window.EJS_gameName = window.pendingROMName;
+                    window.EJS_startOnLoaded = true;
+
+                    // 触发 EmulatorJS 启动
+                    if (typeof window.EJS_init === 'function') {
+                        window.EJS_init();
+                        emulatorInitialized = true;
+                    } else {
+                        // 等待 loader.js 完成后再初始化
+                        waitAndInit(romUrl, fileName);
+                    }
+                }
+
+                loadingTip.classList.add('hidden');
+                console.log('ROM 加载成功:', fileName);
+            } catch (err) {
+                console.error('加载 ROM 失败:', err);
+                loadingTip.innerHTML = '<p style="color:#e74c3c;">加载失败: ' + err.message + '</p>';
+            }
+        }
+
+        // 等待 EmulatorJS 加载完成后初始化
+        function waitAndInit(romUrl, fileName) {
+            let attempts = 0;
+            const maxAttempts = 30;
+
+            const check = () => {
+                attempts++;
+                if (typeof window.EJS_init === 'function') {
+                    window.EJS_gameUrl = romUrl;
+                    window.EJS_gameName = fileName.replace(/\.[^/.]+$/, "");
+                    window.EJS_startOnLoaded = true;
+                    window.EJS_init();
+                    emulatorInitialized = true;
+                    loadingTip.classList.add('hidden');
+                } else if (attempts < maxAttempts) {
+                    loadingTip.innerHTML = '<div class="spinner"></div><p>等待模拟器核心加载... (' + attempts + '/' + maxAttempts + ')</p>';
+                    setTimeout(check, 1000);
+                } else {
+                    loadingTip.innerHTML = '<p style="color:#e74c3c;">模拟器核心加载超时，请刷新页面重试</p>';
+                }
+            };
+            check();
+        }
+
+        // 重新启动模拟器（用于加载新 ROM）
+        function restartEmulatorWithROM(romUrl, fileName) {
+            // EmulatorJS 不支持热切换 ROM，最简单的方式是重新加载页面
+            // 但为了用户体验，我们尝试通过 iframe 重新加载
+            const gameDiv = document.getElementById('game');
+
+            // 清除现有内容
+            gameDiv.innerHTML = '';
+
+            // 创建新的 iframe 加载 EmulatorJS
+            const iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.height = '100%';
+            iframe.style.border = 'none';
+            iframe.style.borderRadius = '4px';
+
+            // 构建 iframe 内容
+            const iframeContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <style>body{margin:0;background:#000;display:flex;justify-content:center;align-items:center;height:100vh;}</style>
+                </head>
+                <body>
+                    <div id="game" style="width:100%;height:100%;"></div>
+                    <script>
+                        window.EJS_player = "#game";
+                        window.EJS_core = "gba";
+                        window.EJS_gameUrl = "${romUrl}";
+                        window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
+                        window.EJS_startOnLoaded = true;
+                        window.EJS_language = "zh-CN";
+                    <\/script>
+                    <script src="https://cdn.emulatorjs.org/stable/data/loader.js"><\/script>
+                </body>
+                </html>
+            `;
+
+            gameDiv.appendChild(iframe);
+            iframe.srcdoc = iframeContent;
+
+            loadingTip.classList.add('hidden');
+        }
+
+        // 全屏切换
+        function toggleFullscreen() {
+            const gameArea = document.querySelector('.game-area');
+            if (!document.fullscreenElement) {
+                gameArea.requestFullscreen?.() || gameArea.webkitRequestFullscreen?.();
+            } else {
+                document.exitFullscreen?.() || document.webkitExitFullscreen?.();
+            }
+        }
+
+        // 虚拟按键处理
+        function setupVirtualButtons() {
+            const buttons = document.querySelectorAll('[data-key]');
+            const keyMap = {
+                'UP': 4, 'DOWN': 5, 'LEFT': 6, 'RIGHT': 7,
+                'A': 0, 'B': 1, 'SELECT': 2, 'START': 3,
+                'L': 9, 'R': 8
+            };
+
+            buttons.forEach(btn => {
+                const key = btn.dataset.key;
+                const keyId = keyMap[key];
+                if (keyId === undefined) return;
+
+                const press = (e) => {
+                    e.preventDefault();
+                    btn.classList.add('pressed');
+                    // 通过 postMessage 发送按键事件到 iframe
+                    const iframe = document.querySelector('#game iframe');
+                    if (iframe && iframe.contentWindow) {
+                        iframe.contentWindow.postMessage({ type: 'key', key: keyId, state: 1 }, '*');
+                    }
+                };
+
+                const release = (e) => {
+                    e.preventDefault();
+                    btn.classList.remove('pressed');
+                    const iframe = document.querySelector('#game iframe');
+                    if (iframe && iframe.contentWindow) {
+                        iframe.contentWindow.postMessage({ type: 'key', key: keyId, state: 0 }, '*');
+                    }
+                };
+
+                btn.addEventListener('mousedown', press);
+                btn.addEventListener('mouseup', release);
+                btn.addEventListener('mouseleave', release);
+                btn.addEventListener('touchstart', press, { passive: false });
+                btn.addEventListener('touchend', release, { passive: false });
+                btn.addEventListener('touchcancel', release);
+            });
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            setupVirtualButtons();
+
+            // 检查是否有预置 ROM（用于自动加载测试）
+            checkForPresetROM();
+        });
+
+        // 检查是否有预置 ROM 文件
+        function checkForPresetROM() {
+            // 尝试从 roms 目录加载默认 ROM
+            fetch('roms/game.gba')
+                .then(response => {
+                    if (response.ok) {
+                        return response.arrayBuffer();
+                    }
+                    throw new Error('没有预置 ROM');
+                })
+                .then(buffer => {
+                    const romData = new Uint8Array(buffer);
+                    loadROM(romData, 'game.gba');
+                })
+                .catch(err => {
+                    console.log('没有预置 ROM，等待用户上传');
+                });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,690 @@
+/* ============================================
+   GBA 模拟器 - 深色主题样式
+   ============================================ */
+
+/* CSS 变量定义 */
+:root {
+    --bg-primary: #0d0d0d;
+    --bg-secondary: #1a1a2e;
+    --bg-tertiary: #16213e;
+    --bg-card: #1f1f3a;
+    --accent-primary: #e94560;
+    --accent-secondary: #0f3460;
+    --accent-success: #00d9ff;
+    --text-primary: #eaeaea;
+    --text-secondary: #a0a0a0;
+    --border-color: #2a2a4a;
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    --btn-active: #ff6b6b;
+    --canvas-bg: #000000;
+}
+
+/* 全局重置 */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* 应用容器 */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100vh;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 8px;
+    gap: 8px;
+}
+
+/* ============================================
+   顶部标题栏
+   ============================================ */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px var(--shadow-color);
+    flex-shrink: 0;
+}
+
+.title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-success));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* ============================================
+   按钮样式
+   ============================================ */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-primary);
+    outline: none;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent-primary), #c73e54);
+    box-shadow: 0 2px 8px rgba(233, 69, 96, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(233, 69, 96, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--accent-secondary);
+    border-color: var(--accent-success);
+}
+
+.btn-control {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.btn-control:hover {
+    background: var(--accent-secondary);
+}
+
+.btn-control .icon {
+    font-size: 1rem;
+}
+
+/* ============================================
+   主内容区
+   ============================================ */
+.main-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-height: 0;
+}
+
+/* 游戏画面包装器 */
+.game-screen-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 720px;
+    aspect-ratio: 3 / 2;
+    background: var(--canvas-bg);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid var(--border-color);
+    box-shadow: 0 8px 30px var(--shadow-color);
+}
+
+#game-canvas {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    display: block;
+}
+
+/* 加载遮罩 */
+.loading-overlay,
+.start-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 10;
+    transition: opacity 0.3s ease;
+}
+
+.loading-overlay.hidden,
+.start-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--accent-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    margin-top: 16px;
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+.start-overlay p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+}
+
+/* ============================================
+   控制栏
+   ============================================ */
+.controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 720px;
+}
+
+.volume-control {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.volume-control input[type="range"] {
+    width: 100px;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+    outline: none;
+}
+
+.volume-control input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* ============================================
+   虚拟按键区域
+   ============================================ */
+.virtual-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 8px 12px;
+    gap: 16px;
+    flex-shrink: 0;
+}
+
+/* 方向键 */
+.dpad {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    flex-shrink: 0;
+}
+
+.dpad-btn {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    background: linear-gradient(145deg, #2a2a4a, #1a1a3a);
+    border: 2px solid var(--border-color);
+    border-radius: 10px;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.1s ease;
+    box-shadow: 0 4px 8px var(--shadow-color);
+}
+
+.dpad-btn:active,
+.dpad-btn.active {
+    background: linear-gradient(145deg, var(--accent-secondary), #0a2440);
+    border-color: var(--accent-success);
+    color: var(--accent-success);
+    transform: scale(0.95);
+    box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.dpad-up { top: 0; left: 55px; }
+.dpad-left { top: 55px; left: 0; }
+.dpad-right { top: 55px; left: 110px; }
+.dpad-down { top: 110px; left: 55px; }
+
+.dpad-center {
+    position: absolute;
+    top: 55px;
+    left: 55px;
+    width: 50px;
+    height: 50px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+}
+
+/* 功能键 */
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.action-row {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 10px 18px;
+    background: linear-gradient(145deg, #2a2a4a, #1a1a3a);
+    border: 2px solid var(--border-color);
+    border-radius: 50px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.1s ease;
+    box-shadow: 0 4px 8px var(--shadow-color);
+}
+
+.action-btn:active,
+.action-btn.active {
+    transform: scale(0.95);
+    box-shadow: 0 2px 4px var(--shadow-color);
+}
+
+.shoulder-btn {
+    padding: 8px 24px;
+    font-size: 0.85rem;
+    border-radius: 12px;
+}
+
+.shoulder-btn:active,
+.shoulder-btn.active {
+    background: linear-gradient(145deg, #3a3a5a, #2a2a4a);
+    border-color: var(--accent-success);
+    color: var(--accent-success);
+}
+
+.main-actions {
+    gap: 20px;
+}
+
+.main-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    font-size: 1.3rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.btn-b {
+    background: linear-gradient(145deg, #c73e54, #a03040);
+    border-color: #e94560;
+}
+
+.btn-b:active,
+.btn-b.active {
+    background: linear-gradient(145deg, #e94560, #c73e54);
+    box-shadow: 0 0 15px rgba(233, 69, 96, 0.5);
+}
+
+.btn-a {
+    background: linear-gradient(145deg, #0f7a3a, #0a5a2a);
+    border-color: #00d9ff;
+}
+
+.btn-a:active,
+.btn-a.active {
+    background: linear-gradient(145deg, #00d9ff, #0f7a3a);
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
+}
+
+.system-actions {
+    gap: 12px;
+}
+
+.system-btn {
+    padding: 8px 14px;
+    font-size: 0.7rem;
+    border-radius: 8px;
+    letter-spacing: 1px;
+}
+
+.system-btn:active,
+.system-btn.active {
+    background: var(--accent-secondary);
+    border-color: var(--accent-success);
+    color: var(--accent-success);
+}
+
+/* ============================================
+   键盘映射说明
+   ============================================ */
+.keyboard-help {
+    padding: 10px 14px;
+    background: var(--bg-secondary);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.keyboard-help h3 {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.key-map {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 12px;
+}
+
+.key-item {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+kbd {
+    display: inline-block;
+    padding: 2px 6px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    box-shadow: 0 2px 0 var(--border-color);
+}
+
+/* ============================================
+   响应式设计
+   ============================================ */
+
+/* 桌面端：隐藏虚拟按键，显示键盘帮助 */
+@media (min-width: 1024px) {
+    .virtual-controls {
+        display: none;
+    }
+
+    .keyboard-help {
+        display: block;
+    }
+
+    .game-screen-wrapper {
+        max-width: 800px;
+    }
+}
+
+/* 平板端 */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .virtual-controls {
+        display: flex;
+    }
+
+    .keyboard-help {
+        display: none;
+    }
+
+    .dpad {
+        width: 140px;
+        height: 140px;
+    }
+
+    .dpad-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .dpad-up { top: 0; left: 48px; }
+    .dpad-left { top: 48px; left: 0; }
+    .dpad-right { top: 48px; left: 96px; }
+    .dpad-down { top: 96px; left: 48px; }
+    .dpad-center { top: 48px; left: 48px; width: 44px; height: 44px; }
+
+    .main-btn {
+        width: 54px;
+        height: 54px;
+    }
+}
+
+/* 手机端 */
+@media (max-width: 767px) {
+    .header {
+        padding: 8px 12px;
+    }
+
+    .title {
+        font-size: 1.1rem;
+    }
+
+    .btn {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+
+    .virtual-controls {
+        padding: 6px;
+        gap: 10px;
+    }
+
+    .keyboard-help {
+        display: none;
+    }
+
+    .dpad {
+        width: 120px;
+        height: 120px;
+    }
+
+    .dpad-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 1rem;
+    }
+
+    .dpad-up { top: 0; left: 41px; }
+    .dpad-left { top: 41px; left: 0; }
+    .dpad-right { top: 41px; left: 82px; }
+    .dpad-down { top: 82px; left: 41px; }
+    .dpad-center { top: 41px; left: 41px; width: 38px; height: 38px; }
+
+    .main-btn {
+        width: 48px;
+        height: 48px;
+        font-size: 1.1rem;
+    }
+
+    .shoulder-btn {
+        padding: 6px 16px;
+        font-size: 0.75rem;
+    }
+
+    .system-btn {
+        padding: 6px 10px;
+        font-size: 0.6rem;
+    }
+
+    .controls-bar {
+        gap: 6px;
+        padding: 6px;
+    }
+
+    .btn-control {
+        padding: 5px 8px;
+        font-size: 0.75rem;
+    }
+
+    .volume-control {
+        font-size: 0.75rem;
+    }
+
+    .volume-control input[type="range"] {
+        width: 70px;
+    }
+}
+
+/* 横屏手机优化 */
+@media (max-width: 767px) and (orientation: landscape) {
+    .app-container {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .header {
+        width: 100%;
+    }
+
+    .main-content {
+        width: 60%;
+        height: calc(100vh - 60px);
+    }
+
+    .virtual-controls {
+        width: 40%;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: calc(100vh - 60px);
+    }
+
+    .game-screen-wrapper {
+        max-width: 100%;
+    }
+}
+
+/* ============================================
+   全屏模式样式
+   ============================================ */
+.fullscreen .app-container {
+    max-width: 100%;
+    padding: 0;
+    gap: 0;
+}
+
+.fullscreen .header,
+.fullscreen .keyboard-help {
+    display: none;
+}
+
+.fullscreen .main-content {
+    width: 100%;
+    height: 100vh;
+}
+
+.fullscreen .game-screen-wrapper {
+    max-width: 100%;
+    height: 100%;
+    border-radius: 0;
+    border: none;
+}
+
+.fullscreen .controls-bar {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.fullscreen .controls-bar:hover {
+    opacity: 1;
+}
+
+.fullscreen .virtual-controls {
+    position: absolute;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    z-index: 20;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+.fullscreen .virtual-controls:hover {
+    opacity: 1;
+}
+
+/* ============================================
+   工具类
+   ============================================ */
+.hidden {
+    display: none !important;
+}
+
+/* 防止触摸时页面滚动 */
+body.touch-active {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+}
