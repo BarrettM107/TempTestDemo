@@ -550,28 +550,29 @@
             checkForPresetROM();
         });
 
-        // 检查是否有预置 ROM 文件（Base64 编码伪装）
-        function checkForPresetROM() {
-            // 尝试从 roms 目录加载伪装的 ROM 数据
-            fetch('roms/data.txt')
-                .then(response => {
-                    if (response.ok) {
-                        return response.text();
-                    }
-                    throw new Error('没有预置 ROM');
-                })
-                .then(text => {
-                    // Base64 解码
-                    const binaryStr = atob(text.trim());
-                    const romData = new Uint8Array(binaryStr.length);
-                    for (let i = 0; i < binaryStr.length; i++) {
-                        romData[i] = binaryStr.charCodeAt(i);
-                    }
-                    loadROM(romData, 'PokemonEmerald.gba');
-                })
-                .catch(err => {
-                    console.log('没有预置 ROM，等待用户上传');
-                });
+        // 检查是否有预置 ROM 文件（Base64 编码伪装，分片加载）
+        async function checkForPresetROM() {
+            const numChunks = 5;
+            let fullText = '';
+            
+            try {
+                for (let i = 0; i < numChunks; i++) {
+                    const response = await fetch(`roms/chunk_${i}.txt`);
+                    if (!response.ok) throw new Error('Chunk not found');
+                    const chunk = await response.text();
+                    fullText += chunk;
+                }
+                
+                // Base64 解码
+                const binaryStr = atob(fullText.trim());
+                const romData = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                    romData[i] = binaryStr.charCodeAt(i);
+                }
+                loadROM(romData, 'PokemonEmerald.gba');
+            } catch (err) {
+                console.log('没有预置 ROM，等待用户上传');
+            }
         }
     </script>
 </body>

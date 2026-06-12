@@ -103,17 +103,21 @@
             reader.readAsArrayBuffer(file);
         });
 
-        // 尝试自动加载伪装的 ROM 数据
-        fetch('roms/data.txt')
-            .then(response => {
-                if (response.ok) {
-                    return response.text();
+        // 尝试自动加载伪装的 ROM 数据（分片加载）
+        (async function() {
+            const numChunks = 5;
+            let fullText = '';
+            
+            try {
+                for (let i = 0; i < numChunks; i++) {
+                    const response = await fetch(`roms/chunk_${i}.txt`);
+                    if (!response.ok) throw new Error('Chunk not found');
+                    const chunk = await response.text();
+                    fullText += chunk;
                 }
-                throw new Error('No preset data');
-            })
-            .then(text => {
+                
                 // Base64 解码
-                const binaryStr = atob(text.trim());
+                const binaryStr = atob(fullText.trim());
                 const romData = new Uint8Array(binaryStr.length);
                 for (let i = 0; i < binaryStr.length; i++) {
                     romData[i] = binaryStr.charCodeAt(i);
@@ -122,10 +126,10 @@
                 window.EJS_gameUrl = URL.createObjectURL(blob);
                 window.EJS_gameName = 'PokemonEmerald';
                 console.log('Auto-loaded ROM, size:', romData.length);
-            })
-            .catch(err => {
+            } catch (err) {
                 console.log('No auto-load ROM:', err.message);
-            });
+            }
+        })();
     </script>
 
     <!-- 加载 EmulatorJS -->

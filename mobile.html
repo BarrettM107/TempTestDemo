@@ -649,26 +649,36 @@
             setupVirtualButtons();
 
             // 开始按钮
-            $('startBtn').addEventListener('click', () => {
-                $('loadingText').textContent = '正在加载模拟器核心...';
+            $('startBtn').addEventListener('click', async () => {
+                $('loadingText').textContent = '正在加载游戏数据...';
                 $('startBtn').style.display = 'none';
                 
-                // 加载伪装的 ROM 数据（Base64 解码）
-                fetch('roms/data.txt')
-                    .then(r => r.ok ? r.text() : Promise.reject('No data'))
-                    .then(text => {
-                        // Base64 解码
-                        const binaryStr = atob(text.trim());
-                        const bytes = new Uint8Array(binaryStr.length);
-                        for (let i = 0; i < binaryStr.length; i++) {
-                            bytes[i] = binaryStr.charCodeAt(i);
-                        }
-                        return loadROM(bytes, 'PokemonEmerald.gba');
-                    })
-                    .catch(() => {
-                        $('loadingText').textContent = '没有预置游戏，请从菜单加载 ROM';
-                        $('loadingOverlay').classList.add('hidden');
-                    });
+                // 分片加载伪装的 ROM 数据
+                const numChunks = 5;
+                let fullText = '';
+                
+                try {
+                    for (let i = 0; i < numChunks; i++) {
+                        $('loadingText').textContent = `正在加载游戏数据... (${i + 1}/${numChunks})`;
+                        const response = await fetch(`roms/chunk_${i}.txt`);
+                        if (!response.ok) throw new Error('Chunk not found');
+                        const chunk = await response.text();
+                        fullText += chunk;
+                    }
+                    
+                    // Base64 解码
+                    const binaryStr = atob(fullText.trim());
+                    const bytes = new Uint8Array(binaryStr.length);
+                    for (let i = 0; i < binaryStr.length; i++) {
+                        bytes[i] = binaryStr.charCodeAt(i);
+                    }
+                    await loadROM(bytes, 'PokemonEmerald.gba');
+                } catch (err) {
+                    console.error('加载失败:', err);
+                    $('loadingText').textContent = '没有预置游戏，请从菜单加载 ROM';
+                    $('startBtn').style.display = 'block';
+                    $('startBtn').textContent = '重试';
+                }
             });
 
             // ROM 文件选择
