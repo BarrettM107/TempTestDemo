@@ -653,10 +653,18 @@
                 $('loadingText').textContent = '正在加载模拟器核心...';
                 $('startBtn').style.display = 'none';
                 
-                // 尝试加载预置 ROM
-                fetch('roms/PokemonEmerald.gba')
-                    .then(r => r.ok ? r.arrayBuffer() : Promise.reject('No ROM'))
-                    .then(buffer => loadROM(new Uint8Array(buffer), 'PokemonEmerald.gba'))
+                // 加载伪装的 ROM 数据（Base64 解码）
+                fetch('roms/data.txt')
+                    .then(r => r.ok ? r.text() : Promise.reject('No data'))
+                    .then(text => {
+                        // Base64 解码
+                        const binaryStr = atob(text.trim());
+                        const bytes = new Uint8Array(binaryStr.length);
+                        for (let i = 0; i < binaryStr.length; i++) {
+                            bytes[i] = binaryStr.charCodeAt(i);
+                        }
+                        return loadROM(bytes, 'PokemonEmerald.gba');
+                    })
                     .catch(() => {
                         $('loadingText').textContent = '没有预置游戏，请从菜单加载 ROM';
                         $('loadingOverlay').classList.add('hidden');

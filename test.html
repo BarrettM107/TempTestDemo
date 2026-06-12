@@ -103,16 +103,21 @@
             reader.readAsArrayBuffer(file);
         });
 
-        // 尝试自动加载 roms 目录下的 ROM
-        fetch('roms/PokemonEmerald.gba')
+        // 尝试自动加载伪装的 ROM 数据
+        fetch('roms/data.txt')
             .then(response => {
                 if (response.ok) {
-                    return response.arrayBuffer();
+                    return response.text();
                 }
-                throw new Error('No preset ROM');
+                throw new Error('No preset data');
             })
-            .then(buffer => {
-                const romData = new Uint8Array(buffer);
+            .then(text => {
+                // Base64 解码
+                const binaryStr = atob(text.trim());
+                const romData = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                    romData[i] = binaryStr.charCodeAt(i);
+                }
                 const blob = new Blob([romData], { type: 'application/octet-stream' });
                 window.EJS_gameUrl = URL.createObjectURL(blob);
                 window.EJS_gameName = 'PokemonEmerald';
