@@ -74,15 +74,23 @@
             flex: 1;
             background: #000;
             position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             overflow: hidden;
+            /* 关键修复：确保有明确的最小高度 */
+            min-height: 200px;
         }
 
         #game {
             width: 100%;
             height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* 关键修复：强制 EmulatorJS Canvas 正确尺寸 */
+        #game canvas {
+            width: 100% !important;
+            height: 100% !important;
         }
 
         .controls-area {
@@ -374,6 +382,34 @@
             to { transform: rotate(360deg); }
         }
 
+        /* 调试信息面板 */
+        #debug-panel {
+            position: fixed;
+            top: 0; right: 0;
+            width: 100%;
+            max-height: 40vh;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.9);
+            color: #0f0;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 8px;
+            z-index: 9999;
+            display: none;
+            border-bottom: 2px solid #0f0;
+            word-break: break-all;
+        }
+
+        #debug-panel .debug-title {
+            color: #ff0;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        #debug-panel .debug-error { color: #f00; }
+        #debug-panel .debug-warn { color: #ff0; }
+        #debug-panel .debug-info { color: #0ff; }
+
         @media (max-width: 374px) {
             .dpad { width: 120px; height: 120px; }
             .dpad-up, .dpad-down { left: 41px; width: 38px; height: 38px; }
@@ -396,10 +432,19 @@
     </style>
 </head>
 <body>
+    <!-- 调试面板 -->
+    <div id="debug-panel">
+        <div class="debug-title">[Debug Log]</div>
+        <div id="debug-content"></div>
+    </div>
+
     <div class="app-container">
         <div class="status-bar">
             <span class="title">GBA 模拟器</span>
-            <button class="menu-btn" id="menuBtn">&#9776;</button>
+            <div style="display:flex;gap:8px;">
+                <button class="menu-btn" id="debugBtn" style="font-size:0.7rem;width:auto;padding:0 8px;">BUG</button>
+                <button class="menu-btn" id="menuBtn">&#9776;</button>
+            </div>
         </div>
 
         <div class="game-area">
@@ -464,100 +509,197 @@
     <input type="file" id="romInput2" accept=".gba,.bin,.zip">
 
     <script>
-        // 防止页面滚动和缩放
-        document.addEventListener('gesturestart', e => e.preventDefault());
-        document.addEventListener('gesturechange', e => e.preventDefault());
-        document.addEventListener('gestureend', e => e.preventDefault());
-        document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-        let lastTouchEnd = 0;
-        document.addEventListener('touchend', e => {
-            const now = Date.now();
+        // ===== 调试日志系统 =====
+        const debugPanel = document.getElementById('debug-panel');
+        const debugContent = document.getElementById('debug-content');
+        let debugVisible = false;
+
+        function debugLog(msg, type) {
+            type = type || 'info';
+            const line = document.createElement('div');
+            line.className = 'debug-' + type;
+            const time = new Date().toLocaleTimeString();
+            line.textContent = '[' + time + '] ' + msg;
+            debugContent.appendChild(line);
+            debugContent.scrollTop = debugContent.scrollHeight;
+            // 同时输出到控制台
+            if (type === 'error') console.error(msg);
+            else if (type === 'warn') console.warn(msg);
+            else console.log(msg);
+        }
+
+        document.getElementById('debugBtn').addEventListener('click', function() {
+            debugVisible = !debugVisible;
+            debugPanel.style.display = debugVisible ? 'block' : 'none';
+        });
+
+        // ===== 环境检测 =====
+        debugLog('UserAgent: ' + navigator.userAgent.substring(0, 100));
+        debugLog('Screen: ' + screen.width + 'x' + screen.height);
+        debugLog('DevicePixelRatio: ' + window.devicePixelRatio);
+
+        // 检测 WebGL 支持
+        (function() {
+            try {
+                const c = document.createElement('canvas');
+                const gl = c.getContext('webgl2') || c.getContext('webgl');
+                if (gl) {
+                    debugLog('WebGL: OK (' + (gl instanceof WebGL2RenderingContext ? '2.0' : '1.0') + ')', 'info');
+                } else {
+                    debugLog('WebGL: NOT SUPPORTED!', 'error');
+                }
+            } catch(e) {
+                debugLog('WebGL test error: ' + e.message, 'error');
+            }
+        })();
+
+        // 检测 SharedArrayBuffer
+        debugLog('SharedArrayBuffer: ' + (typeof SharedArrayBuffer !== 'undefined' ? 'OK' : 'NOT AVAILABLE'), typeof SharedArrayBuffer !== 'undefined' ? 'info' : 'warn');
+
+        // 检测 WebAssembly
+        debugLog('WebAssembly: ' + (typeof WebAssembly !== 'undefined' ? 'OK' : 'NOT SUPPORTED'), typeof WebAssembly !== 'undefined' ? 'info' : 'error');
+
+        // ===== 防止页面滚动和缩放 =====
+        document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+        document.addEventListener('gesturechange', function(e) { e.preventDefault(); });
+        document.addEventListener('gestureend', function(e) { e.preventDefault(); });
+        document.addEventListener('touchmove', function(e) { e.preventDefault(); }, { passive: false });
+        var lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            var now = Date.now();
             if (now - lastTouchEnd <= 300) e.preventDefault();
             lastTouchEnd = now;
         }, { passive: false });
 
-        const $ = id => document.getElementById(id);
-        const gameDiv = $('game');
-        const startScreen = $('start-screen');
+        var $ = function(id) { return document.getElementById(id); };
+        var gameDiv = $('game');
+        var startScreen = $('start-screen');
 
-        // 菜单
-        $('menuBtn').addEventListener('click', () => $('menuModal').classList.add('active'));
-        $('menuClose').addEventListener('click', () => $('menuModal').classList.remove('active'));
-        $('menuModal').addEventListener('click', e => { if (e.target === $('menuModal')) $('menuModal').classList.remove('active'); });
-        $('menuLoadRom').addEventListener('click', () => { $('menuModal').classList.remove('active'); $('romInput2').click(); });
-        $('menuFullscreen').addEventListener('click', () => {
+        // ===== 菜单 =====
+        $('menuBtn').addEventListener('click', function() { $('menuModal').classList.add('active'); });
+        $('menuClose').addEventListener('click', function() { $('menuModal').classList.remove('active'); });
+        $('menuModal').addEventListener('click', function(e) { if (e.target === $('menuModal')) $('menuModal').classList.remove('active'); });
+        $('menuLoadRom').addEventListener('click', function() { $('menuModal').classList.remove('active'); $('romInput2').click(); });
+        $('menuFullscreen').addEventListener('click', function() {
             $('menuModal').classList.remove('active');
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen?.() || document.body.requestFullscreen?.();
+                document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
             } else {
-                document.exitFullscreen?.();
+                document.exitFullscreen && document.exitFullscreen();
             }
         });
 
-        // CDN 备用列表 - 包含多个国内/国际 CDN 源
-        const CDN_LIST = [
-            { data: 'https://cdn.emulatorjs.org/latest/data/', loader: 'https://cdn.emulatorjs.org/latest/data/loader.js' },
-            { data: 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/', loader: 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js' },
-            { data: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/', loader: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js' },
-            { data: 'https://gcore.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/', loader: 'https://gcore.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js' },
-            { data: 'https://testingcf.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/', loader: 'https://testingcf.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js' }
+        // ===== CDN 备用列表 =====
+        var CDN_LIST = [
+            { name: 'official', data: 'https://cdn.emulatorjs.org/stable/data/', loader: 'https://cdn.emulatorjs.org/stable/data/loader.js' },
+            { name: 'jsdelivr', data: 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/', loader: 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/loader.js' },
+            { name: 'fastly', data: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/', loader: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/loader.js' },
+            { name: 'gcore', data: 'https://gcore.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/', loader: 'https://gcore.jsdelivr.net/gh/EmulatorJS/EmulatorJS@stable/data/loader.js' }
         ];
 
-        // ROM 文件选择（初始界面和菜单都可以触发）
+        // ===== ROM 文件选择 =====
         function handleRomSelect(file) {
             if (!file) return;
+            debugLog('ROM selected: ' + file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)');
 
             // 显示加载提示
             startScreen.innerHTML = '<div class="loading-overlay"><div class="loading-spinner"></div><div>正在加载模拟器核心...</div><div style="font-size:0.75rem;color:#888;">首次加载约需 10-20 秒</div></div>';
             startScreen.style.display = 'flex';
 
-            const reader = new FileReader();
+            var reader = new FileReader();
             reader.onload = function(event) {
-                const romData = new Uint8Array(event.target.result);
-                const romBlob = new Blob([romData], { type: 'application/octet-stream' });
-                const romUrl = URL.createObjectURL(romBlob);
+                var romData = new Uint8Array(event.target.result);
+                debugLog('ROM read into memory: ' + romData.length + ' bytes');
 
-                // 设置 EmulatorJS 配置
+                var romBlob = new Blob([romData], { type: 'application/octet-stream' });
+                var romUrl = URL.createObjectURL(romBlob);
+                debugLog('Blob URL created: ' + romUrl.substring(0, 50) + '...');
+
+                // 关键配置：不自动启动，让用户手动点击 Start
                 window.EJS_player = '#game';
                 window.EJS_core = 'gba';
                 window.EJS_gameUrl = romUrl;
-                window.EJS_startOnLoaded = true;
+                window.EJS_startOnLoaded = false; // 关键！移动端需要用户手势启动
                 window.EJS_language = 'en-US';
                 window.EJS_gameName = file.name.replace(/\.[^/.]+$/, '');
+                window.EJS_threads = false; // 关键！避免 SharedArrayBuffer 问题
 
-                // 尝试加载 CDN，自动切换备用源
-                let cdnIndex = 0;
+                debugLog('EJS config set. startOnLoaded=false, threads=false');
+
+                // 尝试加载 CDN
+                var cdnIndex = 0;
                 function tryLoadCDN() {
                     if (cdnIndex >= CDN_LIST.length) {
-                        startScreen.innerHTML = '<div class="loading-overlay"><div style="color:#e94560;">所有 CDN 加载失败</div><div style="font-size:0.75rem;color:#888;">请检查网络连接后刷新重试</div></div>';
+                        debugLog('All CDN sources failed!', 'error');
+                        startScreen.innerHTML = '<div class="loading-overlay"><div style="color:#e94560;">所有 CDN 加载失败</div><div style="font-size:0.75rem;color:#888;">请检查网络后刷新重试</div><div style="font-size:0.65rem;color:#666;margin-top:8px;">点击右上角 BUG 查看日志</div></div>';
                         return;
                     }
-                    const cdn = CDN_LIST[cdnIndex];
+                    var cdn = CDN_LIST[cdnIndex];
+                    debugLog('Trying CDN [' + cdn.name + ']: ' + cdn.loader);
                     window.EJS_pathtodata = cdn.data;
 
-                    const script = document.createElement('script');
+                    var script = document.createElement('script');
                     script.src = cdn.loader;
                     script.onload = function() {
+                        debugLog('CDN [' + cdn.name + '] loader loaded OK!', 'info');
+                        script.loaded = true;
+                        // 不隐藏 startScreen，让 EmulatorJS 的 Start 按钮显示
                         startScreen.style.display = 'none';
+
+                        // 监听游戏启动后的状态
+                        setTimeout(function() {
+                            checkGameStatus();
+                        }, 3000);
+                        setTimeout(function() {
+                            checkGameStatus();
+                        }, 10000);
+                        setTimeout(function() {
+                            checkGameStatus();
+                        }, 20000);
                     };
                     script.onerror = function() {
+                        debugLog('CDN [' + cdn.name + '] failed, trying next...', 'warn');
                         cdnIndex++;
                         tryLoadCDN();
                     };
-                    // 添加超时处理
+                    // 超时处理
                     setTimeout(function() {
                         if (!script.loaded) {
+                            debugLog('CDN [' + cdn.name + '] timeout (15s)', 'warn');
                             script.onerror();
                         }
-                    }, 10000);
+                    }, 15000);
                     document.head.appendChild(script);
                 }
                 tryLoadCDN();
             };
             reader.onerror = function() {
+                debugLog('FileReader error!', 'error');
                 startScreen.innerHTML = '<div class="loading-overlay"><div style="color:#e94560;">读取文件失败</div></div>';
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        // 检查游戏状态
+        function checkGameStatus() {
+            var canvas = gameDiv.querySelector('canvas');
+            if (canvas) {
+                debugLog('Canvas found: ' + canvas.width + 'x' + canvas.height + ' (CSS: ' + canvas.clientWidth + 'x' + canvas.clientHeight + ')');
+                if (canvas.width > 0 && canvas.height > 0) {
+                    debugLog('Game appears to be running!', 'info');
+                } else {
+                    debugLog('Canvas has zero dimensions - game may not have started', 'warn');
+                }
+            } else {
+                debugLog('No canvas found in #game yet', 'warn');
+            }
+
+            // 检查 EmulatorJS 状态
+            if (window.EJS_emulator) {
+                debugLog('EJS_emulator exists');
+            } else {
+                debugLog('EJS_emulator not found yet', 'warn');
+            }
         }
 
         // 初始界面的文件选择
@@ -568,6 +710,14 @@
         // 菜单中的文件选择
         $('romInput2').addEventListener('change', function(e) {
             handleRomSelect(e.target.files[0]);
+        });
+
+        // 拦截全局错误
+        window.addEventListener('error', function(e) {
+            debugLog('Global error: ' + (e.message || e) + ' at ' + (e.filename || ''), 'error');
+        });
+        window.addEventListener('unhandledrejection', function(e) {
+            debugLog('Unhandled promise: ' + (e.reason || ''), 'error');
         });
     </script>
 </body>
