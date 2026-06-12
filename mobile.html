@@ -494,11 +494,13 @@
             }
         });
 
-        // CDN 备用列表
+        // CDN 备用列表 - 包含多个国内/国际 CDN 源
         const CDN_LIST = [
             { data: 'https://cdn.emulatorjs.org/latest/data/', loader: 'https://cdn.emulatorjs.org/latest/data/loader.js' },
             { data: 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/', loader: 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js' },
-            { data: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/', loader: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js' }
+            { data: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/', loader: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js' },
+            { data: 'https://gcore.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/', loader: 'https://gcore.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js' },
+            { data: 'https://testingcf.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/', loader: 'https://testingcf.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js' }
         ];
 
         // ROM 文件选择（初始界面和菜单都可以触发）
@@ -542,6 +544,12 @@
                         cdnIndex++;
                         tryLoadCDN();
                     };
+                    // 添加超时处理
+                    setTimeout(function() {
+                        if (!script.loaded) {
+                            script.onerror();
+                        }
+                    }, 10000);
                     document.head.appendChild(script);
                 }
                 tryLoadCDN();
