@@ -494,6 +494,13 @@
             }
         });
 
+        // CDN 备用列表
+        const CDN_LIST = [
+            { data: 'https://cdn.emulatorjs.org/latest/data/', loader: 'https://cdn.emulatorjs.org/latest/data/loader.js' },
+            { data: 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/', loader: 'https://cdn.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js' },
+            { data: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/', loader: 'https://fastly.jsdelivr.net/gh/EmulatorJS/EmulatorJS@latest/data/loader.js' }
+        ];
+
         // ROM 文件选择（初始界面和菜单都可以触发）
         function handleRomSelect(file) {
             if (!file) return;
@@ -512,21 +519,35 @@
                 window.EJS_player = '#game';
                 window.EJS_core = 'gba';
                 window.EJS_gameUrl = romUrl;
-                window.EJS_pathtodata = 'https://cdn.emulatorjs.org/latest/data/';
                 window.EJS_startOnLoaded = true;
                 window.EJS_language = 'en-US';
                 window.EJS_gameName = file.name.replace(/\.[^/.]+$/, '');
 
-                // 动态加载 EmulatorJS loader
-                const script = document.createElement('script');
-                script.src = 'https://cdn.emulatorjs.org/latest/data/loader.js';
-                script.onload = function() {
-                    startScreen.style.display = 'none';
-                };
-                script.onerror = function() {
-                    startScreen.innerHTML = '<div class="loading-overlay"><div style="color:#e94560;">加载失败，请刷新页面重试</div></div>';
-                };
-                document.head.appendChild(script);
+                // 尝试加载 CDN，自动切换备用源
+                let cdnIndex = 0;
+                function tryLoadCDN() {
+                    if (cdnIndex >= CDN_LIST.length) {
+                        startScreen.innerHTML = '<div class="loading-overlay"><div style="color:#e94560;">所有 CDN 加载失败</div><div style="font-size:0.75rem;color:#888;">请检查网络连接后刷新重试</div></div>';
+                        return;
+                    }
+                    const cdn = CDN_LIST[cdnIndex];
+                    window.EJS_pathtodata = cdn.data;
+
+                    const script = document.createElement('script');
+                    script.src = cdn.loader;
+                    script.onload = function() {
+                        startScreen.style.display = 'none';
+                    };
+                    script.onerror = function() {
+                        cdnIndex++;
+                        tryLoadCDN();
+                    };
+                    document.head.appendChild(script);
+                }
+                tryLoadCDN();
+            };
+            reader.onerror = function() {
+                startScreen.innerHTML = '<div class="loading-overlay"><div style="color:#e94560;">读取文件失败</div></div>';
             };
             reader.readAsArrayBuffer(file);
         }
